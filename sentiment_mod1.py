@@ -1,10 +1,10 @@
 import nltk
-# import random
-# from nltk.classify.scikitlearn import SklearnClassifier
+import random
+from nltk.classify.scikitlearn import SklearnClassifier
 import pickle
-# from sklearn.naive_bayes import MultinomialNB, BernoulliNB
-# from sklearn.linear_model import LogisticRegression, SGDClassifier
-# from sklearn.svm import SVC, LinearSVC, NuSVC
+from sklearn.naive_bayes import MultinomialNB, BernoulliNB
+from sklearn.linear_model import LogisticRegression, SGDClassifier
+from sklearn.svm import SVC, LinearSVC, NuSVC
 from nltk.classify import ClassifierI
 from scipy import stats
 from nltk.tokenize import word_tokenize
@@ -34,41 +34,45 @@ class VoteClassifier(ClassifierI):
         conf = choice_votes / len(votes)
         return conf
 
-short_pos = open("positive.txt","r").read()
-short_neg = open("negative.txt","r").read()
-
-all_words = []
-documents = []
-
-allowed_word_types = ["J"]
-
-for p in short_pos.split('\n'):
-    documents.append( (p, "pos") )
-    words = word_tokenize(p)
-    pos = nltk.pos_tag(words)
-    for w in pos:
-        if w[1][0] in allowed_word_types:
-            all_words.append(w[0].lower())
-
-for p in short_neg.split('\n'):
-    documents.append( (p, "neg") )
-    words = word_tokenize(p)
-    pos = nltk.pos_tag(words)
-    for w in pos:
-        if w[1][0] in allowed_word_types:
-            all_words.append(w[0].lower())
+# short_pos = open("positive.txt","r").read()
+# short_neg = open("negative.txt","r").read()
 #
-# save_documents = open("documents.pickle","wb")
+# all_words = []
+# documents = []
+#
+# allowed_word_types = ["J"]
+#
+# for p in short_pos.split('\n'):
+#     documents.append( (p, "pos") )
+#     words = word_tokenize(p)
+#     pos = nltk.pos_tag(words)
+#     for w in pos:
+#         if w[1][0] in allowed_word_types:
+#             all_words.append(w[0].lower())
+#
+# for p in short_neg.split('\n'):
+#     documents.append( (p, "neg") )
+#     words = word_tokenize(p)
+#     pos = nltk.pos_tag(words)
+#     for w in pos:
+#         if w[1][0] in allowed_word_types:
+#             all_words.append(w[0].lower())
+
+documents_f = open("documents.pickle","rb")
 # pickle.dump(documents, save_documents)
-# save_documents.close()
+documents = pickle.load(documents_f)
+documents_f.close()
 
-all_words = nltk.FreqDist(all_words)
+# all_words = nltk.FreqDist(all_words)
+#
+# word_features = list(all_words.keys())[:5000]
 
-word_features = list(all_words.keys())[:5000]
-
-save_word_features = open("word_features5k.pickle","wb")
-pickle.dump(word_features, save_word_features)
-save_word_features.close()
+word_features5k_f =open("word_features5k.pickle","rb")
+word_features =pickle.load(word_features5k_f)
+word_features5k_f.close()
+# save_word_features = open("word_features5k.pickle","wb")
+# pickle.dump(word_features, save_word_features)
+# save_word_features.close()
 
 def find_features(document):
     words = word_tokenize(document)
@@ -77,19 +81,40 @@ def find_features(document):
         features[w] = (w in words)
 
     return features
+featuresets_f = open("featuresets.pickle", "rb")
+featuresets = pickle.load(featuresets_f)
+featuresets_f.close()
+# featuresets = [(find_features(rebv), category) for (rev, category) in documents]
 
-featuresets = [(find_features(rev), category) for (rev, category) in documents]
+random.shuffle(featuresets)
+print(len(featuresets))
 
-with open("featuresets.pickle", "wb") as save_featureset:
-    pickle.dump(featuresets, save_featureset)
+testing_set = featuresets[10000:]
+training_set = featuresets[:10000]
 
-# random.shuffle(featuresets)
-# print(len(featuresets))
-#
-# testing_set = featuresets[10000:]
-# training_set = featuresets[:10000]
-#
-#
+open_file =open("originalnaivebayes5k.pickle","rb")
+classifier =pickle.load(open_file)
+open_file.close()
+
+open_file =open("MNB_classifier5k.pickle","rb")
+MNB_classifier =pickle.load(open_file)
+open_file.close()
+
+open_file =open("BernoulliNB_classifier5k.pickle","rb")
+BernoulliNB_classifier=pickle.load(open_file)
+open_file.close()
+
+open_file =open("LogisticRegression_classifier5k.pickle","rb")
+LogisticRegression_classifier=pickle.load(open_file)
+open_file.close()
+
+open_file =open("LinearSVC_classifier5k.pickle","rb")
+LinearSVC_classifier=pickle.load(open_file)
+open_file.close()
+
+open_file =open("SGDC_classifier5k.pickle","rb")
+SGDC_classifier = pickle.load(open_file)
+open_file.close()
 # classifier = nltk.NaiveBayesClassifier.train(training_set)
 # print("Original Naive Bayes Algo accuracy percent:", (nltk.classify.accuracy(classifier, testing_set))*100)
 # classifier.show_most_informative_features(15)
@@ -145,14 +170,14 @@ with open("featuresets.pickle", "wb") as save_featureset:
 # save_classifier = open("SGDC_classifier5k.pickle","wb")
 # pickle.dump(SGDC_classifier, save_classifier)
 # save_classifier.close()
-#
-# # voted_classifier = VoteClassifier(
-# #                                   classifier,
-# #                                   LinearSVC_classifier,
-# #                                   MNB_classifier,
-# #                                   BernoulliNB_classifier,
-# #                                   LogisticRegression_classifier)
-# #
-# # def sentiment(text):
-# #     feats = find_features(text)
-# #     return voted_classifier.classify(feats),voted_classifier.confidence(feats)
+
+voted_classifier = VoteClassifier(
+                                  classifier,
+                                  LinearSVC_classifier,
+                                  MNB_classifier,
+                                  BernoulliNB_classifier,
+                                  LogisticRegression_classifier)
+
+def sentiment(text):
+    feats = find_features(text)
+    return voted_classifier.classify(feats),voted_classifier.confidence(feats)
